@@ -18,8 +18,16 @@ const deleteOldRecords = async () => {
                             `;
 }
 
+const findDataSensorByContidion = async (condition, pagination)=>{
+    return await prisma.sensorData.findMany({
+        where: condition,
+        ...pagination
+    })
+}
+
 
 module.exports = {
     createDataSensor,
-    deleteOldRecords
+    deleteOldRecords,
+    findDataSensorByContidion
 }
