@@ -1,5 +1,7 @@
 const dataSensorModel = require('../models/dataSensor');
-const {PAGE_DEFAULT,PAGE_SIZE_DEFAULT} = require('../constant')
+const { PAGE_DEFAULT, PAGE_SIZE_DEFAULT , TIME_ZONE} = require('../constant');
+const { fromZonedTime } = require('date-fns-tz');
+
 async function postDataSensor(req, res) {
     try {
         const newDataSensor = await dataSensorModel.createDataSensor();
@@ -15,98 +17,114 @@ async function postDataSensor(req, res) {
     }
 }
 
-const mappingSearchBySensorData = {
-    ALL: 'ALL',
-    TEMPERATURE: 'temperature',
-    HUMIDITY: 'humidity',
-    LIGHT: 'light',
-    ID: '',
-}
-
 async function getDataSensors(req, res) {
     try {
-        const { content, searchBy, startTime, endTime, page, pageSize, sortBy, orderBy } = req.query;
+        let { content, searchBy, startTime, endTime, page, pageSize, sortBy, orderBy } = req.query;
         let condition = {};
         let order = {};
 
-        const pageNumber = Math.max(Number(page) || PAGE_DEFAULT, 1); 
-        const pageSizeNumber = Math.max(Number(pageSize) || PAGE_SIZE_DEFAULT, 1);
+        page = Math.max(Number(page) || PAGE_DEFAULT, 1);
+        pageSize = Math.max(Number(pageSize) || PAGE_SIZE_DEFAULT, 1);
 
         const pagination = {
-            skip: (pageNumber - 1) * pageSizeNumber,
-            take: pageSizeNumber,
+            skip: (page - 1) * pageSize,
+            take: pageSize,
         };
+
+        content = Number(content);
         if (content && searchBy) {
             switch (searchBy) {
                 case 'ID':
-                    condition.id = Number(content)
+                    condition.id = content
                     break;
                 case 'TEMPERATURE':
-                    condition.temperature = Number(content)
+                    condition.temperature = content
                     break;
                 case 'HUMIDITY':
-                    condition.humidity = Number(content)
+                    condition.humidity = content
                     break;
                 case 'LIGHT':
-                    condition.light = Number(content)
+                    condition.light = content
                     break;
                 case 'ALL':
                     condition.OR = [
                         {
-                            id: Number(content)
+                            id: content
                         }, {
-                            temperature: Number(content)
+                            temperature: content
                         }, {
-                            humidity: Number(content)
+                            humidity: content
                         }, {
-                            light: Number(content)
+                            light: content
                         }
                     ]
                     break;
                 default:
                     res.status(400).json({
                         message: 'searchBy must be one of the following parameters [ALL,TEMPERATURE,HUMIDITY,LIGHT,ID]',
-                    })
-                    break;
-            }
-        } 
-
-        if (startTime && endTime) {
-            condition.createdAt = {
-                gte: new Date(startTime),
-                lte: new Date(endTime),
+                    });
+                    return;
             }
         }
 
-        if(sortBy) {
+        if (startTime && endTime) {
+            condition.createdAt = {
+                gte: fromZonedTime(startTime, TIME_ZONE),
+                lte: fromZonedTime(endTime, TIME_ZONE)
+            }
+        }
+
+        if (orderBy && orderBy !== 'ASC' && orderBy !== 'DESC') {
+            res.status(400).json({
+                message: 'orderBy must be one of the following parameters [ASC, DESC]',
+            });
+            return;
+        }
+
+        orderBy = orderBy?.toLowerCase() || 'asc'
+
+        if (sortBy) {
             switch (sortBy) {
                 case 'ID':
-                    condition.id = Number(content)
+                    order.id = orderBy
                     break;
                 case 'TEMPERATURE':
-                    condition.temperature = Number(content)
+                    order.temperature = orderBy
                     break;
                 case 'HUMIDITY':
-                    condition.humidity = Number(content)
+                    order.humidity = orderBy
                     break;
                 case 'LIGHT':
-                    condition.light = Number(content)
+                    order.light = orderBy
+                    break;
+                case 'TIME':
+                    order.createdAt = orderBy
+                    break;
+                default:
+                    res.status(400).json({
+                        message: 'sortBy must be one of the following parameters [TIME,TEMPERATURE,HUMIDITY,LIGHT,ID]',
+                    })
                     break;
             }
-        } // xem FE truyền kiẻu gì
+        } else order.id = orderBy
 
-
-
-        const data = await dataSensorModel.findDataSensorByContidion(condition, pagination)
+        const [data, totalCount] = await Promise.all([
+            await dataSensorModel.findDataSensorByContidion(condition, pagination, order),
+            await dataSensorModel.countNumberDataSensorByCondition(condition)
+        ]) 
 
         res.status(200).json({
-            message: 'Data successfully!',
-            data
+            data,
+            meta: {
+                page,
+                pageSize,
+                totalCount
+            }
         })
     } catch (error) {
         res.status(500).json({
             message: 'Internal Server Error !',
-            error
+            error: error.message
         })
     }
 }
