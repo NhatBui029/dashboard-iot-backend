@@ -13,6 +13,12 @@ const deleteOldRecords = async () => {
                             `;
 }
 
+const createActionHistory = async (data) =>{
+    return await prisma.actionHistory.create({
+        data: data
+    })
+}
+
 const findActionHistoryByContidion = async (condition, pagination)=>{
     return await prisma.actionHistory.findMany({
         where: condition,
@@ -29,5 +35,6 @@ const countNumberActionHistoryByCondition = async (condition) =>{
 module.exports = {
     deleteOldRecords,
     findActionHistoryByContidion,
-    countNumberActionHistoryByCondition
+    countNumberActionHistoryByCondition,
+    createActionHistory
 }

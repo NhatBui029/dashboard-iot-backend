@@ -7,7 +7,9 @@ const dataSensorModel = require('./models/dataSensor.js')
 const scheduleCronJobs = require('./controllers/cron.js')
 const app = express();
 const port = 3001; // port backend
-const cors = require('cors')
+const cors = require('cors');
+const { Device, Action } = require('@prisma/client');
+const actionHistoryModel = require('./models/actionHistory.js');
 
 require('dotenv').config()
 
@@ -52,10 +54,25 @@ wss.on('connection', (ws, req) => {
   });
 
   // (Tùy chọn) In thông tin khi có tin nhắn đến
-  ws.on('message', (data) => {
+  ws.on('message',async (data) => {
     console.log(`Received message: ${data}`);
-    const {topic, message} = JSON.parse(data);
-    mqttClient.publish(topic, message)    
+    const { topic, message } = JSON.parse(data);
+
+    let xxxx = {};
+    if (topic == 'action/air_conditioner') {
+      xxxx.device = Device.AIR_CONDITIONER,
+        xxxx.action = message == 'on' ? Action.OFF : Action.OFF
+    }
+    if (topic == 'action/fan') {
+      xxxx.device = Device.FAN,
+        xxxx.action = message == 'on' ? Action.OFF : Action.OFF
+    }
+    if (topic == 'action/led') {
+      xxxx.device = Device.LED,
+        xxxx.action = message == 'on' ? Action.OFF : Action.OFF
+    }
+    await actionHistoryModel.createActionHistory(xxxx);
+    mqttClient.publish(topic, message)
   });
 });
 
