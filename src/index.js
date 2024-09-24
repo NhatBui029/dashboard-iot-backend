@@ -61,15 +61,15 @@ wss.on('connection', (ws, req) => {
     let xxxx = {};
     if (topic == 'action/air_conditioner') {
       xxxx.device = Device.AIR_CONDITIONER,
-        xxxx.action = message == 'on' ? Action.OFF : Action.OFF
+        xxxx.action = message == 'on' ? Action.ON : Action.OFF
     }
     if (topic == 'action/fan') {
       xxxx.device = Device.FAN,
-        xxxx.action = message == 'on' ? Action.OFF : Action.OFF
+        xxxx.action = message == 'on' ? Action.ON : Action.OFF
     }
     if (topic == 'action/led') {
       xxxx.device = Device.LED,
-        xxxx.action = message == 'on' ? Action.OFF : Action.OFF
+        xxxx.action = message == 'on' ? Action.ON : Action.OFF
     }
     await actionHistoryModel.createActionHistory(xxxx);
     mqttClient.publish(topic, message)
